@@ -1,0 +1,8 @@
+
+# database
+database.xlsx
+.next
+.env
+node_modules
+dist
+build
