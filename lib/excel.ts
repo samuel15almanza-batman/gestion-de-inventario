@@ -1,6 +1,7 @@
 import ExcelJS from 'exceljs';
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
 
 const DB_FILE = 'database.xlsx';
 
@@ -11,7 +12,13 @@ class ExcelDatabase {
 
   private constructor() {
     this.workbook = new ExcelJS.Workbook();
-    this.filePath = path.join(process.cwd(), DB_FILE);
+    
+    // In production (Vercel), we must use /tmp directory
+    if (process.env.NODE_ENV === 'production') {
+        this.filePath = path.join(os.tmpdir(), DB_FILE);
+    } else {
+        this.filePath = path.join(process.cwd(), DB_FILE);
+    }
   }
 
   public static getInstance(): ExcelDatabase {
@@ -22,10 +29,29 @@ class ExcelDatabase {
   }
 
   public async getWorkbook(): Promise<ExcelJS.Workbook> {
-    if (fs.existsSync(this.filePath)) {
-      await this.workbook.xlsx.readFile(this.filePath);
-    } else {
-      await this.initDatabase();
+    try {
+        // If file doesn't exist in tmp but exists in project root (deployment copy), try to copy it first
+        if (!fs.existsSync(this.filePath) && process.env.NODE_ENV === 'production') {
+            const originalPath = path.join(process.cwd(), DB_FILE);
+            if (fs.existsSync(originalPath)) {
+                try {
+                    fs.copyFileSync(originalPath, this.filePath);
+                    console.log(`Copied database to tmp: ${this.filePath}`);
+                } catch (e) {
+                    console.warn('Failed to copy initial database, creating new one.');
+                }
+            }
+        }
+
+        if (fs.existsSync(this.filePath)) {
+            await this.workbook.xlsx.readFile(this.filePath);
+        } else {
+            await this.initDatabase();
+        }
+    } catch (error) {
+        console.error('Error loading workbook:', error);
+        // Fallback: init empty database in memory/tmp to prevent crash
+        await this.initDatabase();
     }
     return this.workbook;
   }
@@ -71,7 +97,11 @@ class ExcelDatabase {
         }
       }
     });
-    await this.save();
+    try {
+        await this.save();
+    } catch (e) {
+        console.error('Failed to save init database:', e);
+    }
   }
 }
 
