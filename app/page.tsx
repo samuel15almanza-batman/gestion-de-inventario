@@ -14,7 +14,7 @@ export default async function Home() {
   ]);
 
   const totalProducts = products.reduce((sum, p) => sum + p.cantidad, 0);
-  const lowStock = products.filter(p => p.cantidad < 5).length;
+  const lowStock = products.filter(p => p.cantidad < 10).length;
   const totalOutputs = outputs.length;
   // Get last 5 outputs, reverse to show newest first
   const recentOutputs = [...outputs].reverse().slice(0, 5);
