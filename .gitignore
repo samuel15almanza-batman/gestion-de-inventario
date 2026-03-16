@@ -1,6 +1,6 @@
 
 # database
-database.xlsx
+# database.xlsx (Uncommented to allow upload for Vercel demo)
 .next
 .env
 node_modules
