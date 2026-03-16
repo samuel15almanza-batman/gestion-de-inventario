@@ -19,7 +19,7 @@ export class ProductRepository extends BaseRepository<Product> {
   async getById(id: string): Promise<Product | null> {
     const sheet = await this.getSheet();
     let found: Product | null = null;
-    sheet.eachRow((row, rowNumber) => {
+    sheet.eachRow((row: Row, rowNumber) => {
         if (rowNumber > 1 && row.getCell('id').value === id) {
             found = this.mapRowToProduct(row);
         }
@@ -44,21 +44,22 @@ export class ProductRepository extends BaseRepository<Product> {
   async update(id: string, updates: Partial<Product>): Promise<Product | null> {
       const sheet = await this.getSheet();
       let foundRow: Row | null = null;
-      sheet.eachRow((row, rowNumber) => {
+      sheet.eachRow((row: Row, rowNumber) => {
           if (rowNumber > 1 && row.getCell('id').value === id) {
               foundRow = row;
           }
       });
 
-      if (foundRow) {
-          if (updates.nombre !== undefined) foundRow.getCell('nombre').value = updates.nombre;
-          if (updates.descripcion !== undefined) foundRow.getCell('descripcion').value = updates.descripcion;
-          if (updates.cantidad !== undefined) foundRow.getCell('cantidad').value = updates.cantidad;
-          if (updates.precio !== undefined) foundRow.getCell('precio').value = updates.precio;
-          if (updates.categoria !== undefined) foundRow.getCell('categoria').value = updates.categoria;
+      if (foundRow !== null) {
+          const row = foundRow as Row;
+          if (updates.nombre !== undefined) row.getCell('nombre').value = updates.nombre;
+          if (updates.descripcion !== undefined) row.getCell('descripcion').value = updates.descripcion;
+          if (updates.cantidad !== undefined) row.getCell('cantidad').value = updates.cantidad;
+          if (updates.precio !== undefined) row.getCell('precio').value = updates.precio;
+          if (updates.categoria !== undefined) row.getCell('categoria').value = updates.categoria;
           
           await this.db.save();
-          return this.mapRowToProduct(foundRow);
+          return this.mapRowToProduct(row);
       }
       return null;
   }
@@ -66,7 +67,7 @@ export class ProductRepository extends BaseRepository<Product> {
   async delete(id: string): Promise<boolean> {
       const sheet = await this.getSheet();
       let rowNumberToDelete = -1;
-      sheet.eachRow((row, rowNumber) => {
+      sheet.eachRow((row: Row, rowNumber) => {
           if (rowNumber > 1 && row.getCell('id').value === id) {
               rowNumberToDelete = rowNumber;
           }

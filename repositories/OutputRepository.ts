@@ -19,7 +19,7 @@ export class OutputRepository extends BaseRepository<Output> {
   async getById(id: string): Promise<Output | null> {
     const sheet = await this.getSheet();
     let found: Output | null = null;
-    sheet.eachRow((row, rowNumber) => {
+    sheet.eachRow((row: Row, rowNumber) => {
         if (rowNumber > 1 && row.getCell('id').value === id) {
             found = this.mapRowToOutput(row);
         }
@@ -47,7 +47,7 @@ export class OutputRepository extends BaseRepository<Output> {
   async delete(id: string): Promise<boolean> {
       const sheet = await this.getSheet();
       let rowNumberToDelete = -1;
-      sheet.eachRow((row, rowNumber) => {
+      sheet.eachRow((row: Row, rowNumber) => {
           if (rowNumber > 1 && row.getCell('id').value === id) {
               rowNumberToDelete = rowNumber;
           }
