@@ -15,7 +15,8 @@ export default function ProductForm({ onSuccess, onCancel }: ProductFormProps) {
     descripcion: '',
     cantidad: 0,
     precio: 0,
-    categoria: ''
+    categoria: '',
+    fecha_entrada: new Date().toISOString().split('T')[0]
   });
   const [loading, setLoading] = useState(false);
 
@@ -86,6 +87,17 @@ export default function ProductForm({ onSuccess, onCancel }: ProductFormProps) {
           className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
           value={formData.categoria}
           onChange={(e) => setFormData({...formData, categoria: e.target.value})}
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Fecha de Entrada</label>
+        <input
+          type="date"
+          required
+          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+          value={formData.fecha_entrada}
+          onChange={(e) => setFormData({...formData, fecha_entrada: e.target.value})}
         />
       </div>
       <div className="flex justify-end space-x-3 pt-4">

@@ -97,11 +97,12 @@ export default function ProductList({ initialProducts }: ProductListProps) {
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Categoría</th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Precio</th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Cantidad</th>
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Fecha Ingreso</th>
               <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Acciones</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
-            {products.map((product) => (
+            {filteredProducts.map((product) => (
               <tr key={product.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                 <td className="whitespace-nowrap px-6 py-4">
                   <div className="text-sm font-medium text-gray-900 dark:text-white">{product.nombre}</div>
@@ -110,6 +111,9 @@ export default function ProductList({ initialProducts }: ProductListProps) {
                 <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{product.categoria}</td>
                 <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">${product.precio}</td>
                 <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{product.cantidad}</td>
+                <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                  {product.fecha_entrada ? new Date(product.fecha_entrada).toLocaleDateString() : '-'}
+                </td>
                 <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
                   <button onClick={() => handleDelete(product.id)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">
                     Eliminar

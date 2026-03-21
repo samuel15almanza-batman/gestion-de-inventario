@@ -13,7 +13,8 @@ export default async function Home() {
     outputRepo.getAll()
   ]);
 
-  const totalProducts = products.reduce((sum, p) => sum + p.cantidad, 0);
+  // Contar productos únicos (tipos) en lugar de sumar las cantidades
+  const totalProducts = products.length;
   const lowStock = products.filter(p => p.cantidad < 10).length;
   const totalOutputs = outputs.length;
   // Get last 5 outputs, reverse to show newest first

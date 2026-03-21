@@ -5,4 +5,5 @@ export interface Product {
     cantidad: number;
     precio: number;
     categoria: string;
+    fecha_entrada: string;
 }
