@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Output } from '@/models/Output';
-import { Product } from '@/models/Product';
+import { Output } from '@/modules/outputs/models/Output';
+import { Product } from '@/modules/inventory/models/Product';
 import OutputForm from './OutputForm';
 import { useRouter } from 'next/navigation';
 
@@ -15,15 +15,17 @@ export default function OutputList({ initialOutputs, products }: OutputListProps
   const [outputs, setOutputs] = useState(initialOutputs);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [dateFilter, setDateFilter] = useState('');
-  const [recipientFilter, setRecipientFilter] = useState('');
+  const [fichaFilter, setFichaFilter] = useState('');
+  const [areaFilter, setAreaFilter] = useState('');
   const [selectedOutput, setSelectedOutput] = useState<Output | null>(null);
   const router = useRouter();
 
   const filteredOutputs = outputs.filter(output => {
     const outputDate = new Date(output.fecha).toISOString().split('T')[0];
     const matchesDate = dateFilter ? outputDate === dateFilter : true;
-    const matchesRecipient = recipientFilter ? output.destinatarioNombre.toLowerCase().includes(recipientFilter.toLowerCase()) : true;
-    return matchesDate && matchesRecipient;
+    const matchesFicha = fichaFilter ? output.destinatarioFicha.toLowerCase().includes(fichaFilter.toLowerCase()) : true;
+    const matchesArea = areaFilter ? output.destinatarioArea.toLowerCase().includes(areaFilter.toLowerCase()) : true;
+    return matchesDate && matchesFicha && matchesArea;
   });
 
   const handleOutputAdded = (newOutput: Output) => {
@@ -46,12 +48,22 @@ export default function OutputList({ initialOutputs, products }: OutputListProps
                 />
             </div>
             <div className="flex flex-col flex-1 max-w-xs">
-                <label className="text-xs font-medium text-gray-500 mb-1">Destinatario</label>
+                <label className="text-xs font-medium text-gray-500 mb-1">Ficha</label>
                 <input 
                     type="text" 
-                    placeholder="Buscar por nombre..."
-                    value={recipientFilter}
-                    onChange={(e) => setRecipientFilter(e.target.value)}
+                    placeholder="Buscar por ficha..."
+                    value={fichaFilter}
+                    onChange={(e) => setFichaFilter(e.target.value)}
+                    className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                />
+            </div>
+            <div className="flex flex-col flex-1 max-w-xs">
+                <label className="text-xs font-medium text-gray-500 mb-1">Área</label>
+                <input 
+                    type="text" 
+                    placeholder="Buscar por área..."
+                    value={areaFilter}
+                    onChange={(e) => setAreaFilter(e.target.value)}
                     className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 />
             </div>
@@ -77,33 +89,45 @@ export default function OutputList({ initialOutputs, products }: OutputListProps
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
-            {filteredOutputs.map((output) => (
-              <tr key={output.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                  {new Date(output.fecha).toLocaleString()}
-                </td>
-                <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">
-                  {output.nombreProducto}
-                </td>
-                <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                  {output.cantidad}
-                </td>
-                <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                  {output.destinatarioNombre}
-                </td>
-                <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                  {output.destinatarioFicha} / {output.destinatarioArea}
-                </td>
-                <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
-                  <button onClick={() => setSelectedOutput(output)} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">
-                    Detalles
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {filteredOutputs.map((output) => {
+              const firstItem = output.items?.[0];
+              const extraCount = Math.max(0, (output.totalProductos || output.items?.length || 0) - 1);
+              return (
+                <tr key={output.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                    {new Date(output.fecha).toLocaleString()}
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">
+                    <div className="flex flex-col">
+                      <span className="truncate">{firstItem?.nombreProducto || 'Salida'}</span>
+                      {extraCount > 0 && (
+                        <span className="text-xs text-gray-500 dark:text-gray-400">+ {extraCount} más</span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                    {output.totalCantidad}
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                    {output.destinatarioNombre}
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                    {output.destinatarioFicha} / {output.destinatarioArea}
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
+                    <button
+                      onClick={() => setSelectedOutput(output)}
+                      className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
+                    >
+                      Detalles
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
              {filteredOutputs.length === 0 && (
                 <tr>
-                    <td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
+                    <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
                         No hay salidas registradas.
                     </td>
                 </tr>
@@ -135,20 +159,36 @@ export default function OutputList({ initialOutputs, products }: OutputListProps
                   
                   <div className="space-y-6">
                       <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg">
-                          <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Información del Producto</h3>
-                          <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                  <span className="text-xs text-gray-500 dark:text-gray-400 block">Producto</span>
-                                  <span className="font-medium text-gray-900 dark:text-white">{selectedOutput.nombreProducto}</span>
+                          <div className="flex items-start justify-between gap-4">
+                            <div>
+                              <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Productos retirados</h3>
+                              <div className="text-xs text-gray-500 dark:text-gray-400">
+                                {selectedOutput.totalProductos} producto(s) · {selectedOutput.totalCantidad} unidad(es)
                               </div>
-                              <div>
-                                  <span className="text-xs text-gray-500 dark:text-gray-400 block">Cantidad</span>
-                                  <span className="font-medium text-gray-900 dark:text-white">{selectedOutput.cantidad}</span>
-                              </div>
-                              <div>
-                                  <span className="text-xs text-gray-500 dark:text-gray-400 block">Fecha</span>
-                                  <span className="font-medium text-gray-900 dark:text-white">{new Date(selectedOutput.fecha).toLocaleString()}</span>
-                              </div>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-xs text-gray-500 dark:text-gray-400 block">Fecha</span>
+                              <span className="font-medium text-gray-900 dark:text-white">{new Date(selectedOutput.fecha).toLocaleString()}</span>
+                            </div>
+                          </div>
+
+                          <div className="mt-4 overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+                            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                              <thead className="bg-gray-50 dark:bg-gray-900">
+                                <tr>
+                                  <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Producto</th>
+                                  <th className="px-4 py-2 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Cantidad</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                                {selectedOutput.items.map((it) => (
+                                  <tr key={it.productoId}>
+                                    <td className="px-4 py-2 text-sm text-gray-900 dark:text-white">{it.nombreProducto}</td>
+                                    <td className="px-4 py-2 text-right text-sm text-gray-600 dark:text-gray-300">{it.cantidad}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
                           </div>
                       </div>
 

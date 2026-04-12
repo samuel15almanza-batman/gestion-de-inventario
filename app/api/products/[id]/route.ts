@@ -1,20 +1,22 @@
 import { NextResponse } from 'next/server';
-import { ProductRepository } from '@/repositories/ProductRepository';
-
-const productRepo = new ProductRepository();
+import { ProductService } from '@/modules/inventory/services/ProductService';
+import { getAppMode } from '@/lib/app-config';
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
+  const mode = getAppMode();
+  const productService = new ProductService(mode);
   try {
-    const { id } = await params;
-    const product = await productRepo.getById(id);
+    const product = await productService.getById(id);
     if (!product) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });
     }
     return NextResponse.json(product);
   } catch (error) {
+    console.error(error);
     return NextResponse.json({ error: 'Failed to fetch product' }, { status: 500 });
   }
 }
@@ -23,15 +25,18 @@ export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
+  const mode = getAppMode();
+  const productService = new ProductService(mode);
   try {
-    const { id } = await params;
     const body = await request.json();
-    const updatedProduct = await productRepo.update(id, body);
+    const updatedProduct = await productService.update(id, body);
     if (!updatedProduct) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });
     }
     return NextResponse.json(updatedProduct);
   } catch (error) {
+    console.error(error);
     return NextResponse.json({ error: 'Failed to update product' }, { status: 500 });
   }
 }
@@ -40,14 +45,17 @@ export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
+  const mode = getAppMode();
+  const productService = new ProductService(mode);
   try {
-    const { id } = await params;
-    const deleted = await productRepo.delete(id);
-    if (!deleted) {
+    const success = await productService.delete(id);
+    if (!success) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });
     }
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ message: 'Product deleted successfully' });
   } catch (error) {
+    console.error(error);
     return NextResponse.json({ error: 'Failed to delete product' }, { status: 500 });
   }
 }

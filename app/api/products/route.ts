@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
-import { ProductRepository } from '@/repositories/ProductRepository';
-import { ProductFactory } from '@/factories/ProductFactory';
-
-const productRepo = new ProductRepository();
+import { ProductService } from '@/modules/inventory/services/ProductService';
+import { getAppMode } from '@/lib/app-config';
 
 export async function GET() {
+  const mode = getAppMode();
+  const productService = new ProductService(mode);
   try {
-    const products = await productRepo.getAll();
+    const products = await productService.getAll();
     return NextResponse.json(products);
   } catch (error) {
     console.error(error);
@@ -15,6 +15,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const mode = getAppMode();
+  const productService = new ProductService(mode);
   try {
     const body = await request.json();
     
@@ -34,8 +36,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'La categoría es requerida' }, { status: 400 });
     }
 
-    const product = ProductFactory.create(body);
-    await productRepo.create(product);
+    const product = await productService.create(body);
     return NextResponse.json(product, { status: 201 });
   } catch (error) {
     console.error(error);

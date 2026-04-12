@@ -1,8 +1,12 @@
-# Supabase
-.branches
-.temp
+# Supabase specific ignores
+.branches/
+.temp/
+config.toml
 
-# dotenvx
+# dotenv keys and locals
 .env.keys
 .env.local
 .env.*.local
+
+# Remote DB dumps
+supabase/backups/

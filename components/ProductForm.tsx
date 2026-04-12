@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Product } from '@/models/Product';
+import { Product } from '@/modules/inventory/models/Product';
 import axios from 'axios';
 
 interface ProductFormProps {

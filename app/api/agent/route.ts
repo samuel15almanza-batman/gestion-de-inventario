@@ -1,17 +1,18 @@
 import { NextResponse } from 'next/server';
-import { InventoryAgent } from '@/lib/agent';
-
-// Instantiate agent per request to ensure fresh data or use singleton if repository handles freshness
-// Since repository fetches fresh data on each call (via getWorkbook), it's safe.
-const agent = new InventoryAgent();
+import { InventoryQueryService } from '@/modules/agent/services/InventoryQueryService';
+import { getAppMode } from '@/lib/app-config';
 
 export async function POST(request: Request) {
+  const mode = getAppMode();
+  const inventoryQueryService = new InventoryQueryService(mode);
   try {
     const { query } = await request.json();
+    
     if (!query) {
-        return NextResponse.json({ error: 'Query is required' }, { status: 400 });
+      return NextResponse.json({ error: 'Query is required' }, { status: 400 });
     }
-    const response = await agent.processQuery(query);
+
+    const response = await inventoryQueryService.processQuery(query);
     return NextResponse.json({ response });
   } catch (error) {
     console.error(error);

@@ -1,12 +1,14 @@
-import { ProductRepository } from '@/repositories/ProductRepository';
-import { OutputRepository } from '@/repositories/OutputRepository';
+import { ProductRepositoryFactory } from '@/modules/inventory/repositories/ProductRepository';
+import { OutputRepositoryFactory } from '@/modules/outputs/repositories/OutputRepository';
+import { getAppMode } from '@/lib/app-config';
 import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
 
 export default async function Home() {
-  const productRepo = new ProductRepository();
-  const outputRepo = new OutputRepository();
+  const mode = getAppMode();
+  const productRepo = ProductRepositoryFactory.get(mode);
+  const outputRepo = OutputRepositoryFactory.get(mode);
 
   const [products, outputs] = await Promise.all([
     productRepo.getAll(),
@@ -24,7 +26,7 @@ export default async function Home() {
     <div className="space-y-8">
       <div className="text-center">
         <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-          Panel de Control
+          Panel de Control {mode === 'demo' && <span className="text-sm font-normal text-yellow-500">(Modo Demo)</span>}
         </h1>
         <p className="mt-2 text-lg text-gray-600 dark:text-gray-400">
           Bienvenido al Sistema de Gestión de Inventario
@@ -32,6 +34,7 @@ export default async function Home() {
       </div>
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {/* ... rest of the UI ... */}
         <div className="rounded-lg bg-white p-6 shadow dark:bg-gray-800 transition-all hover:shadow-lg">
           <div className="flex items-center">
             <div className="rounded-full bg-indigo-100 p-3 dark:bg-indigo-900">
@@ -64,7 +67,7 @@ export default async function Home() {
           <div className="flex items-center">
             <div className="rounded-full bg-green-100 p-3 dark:bg-green-900">
               <svg className="h-6 w-6 text-green-600 dark:text-green-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01m-.01 4h.01" />
               </svg>
             </div>
             <div className="ml-4">
@@ -75,39 +78,65 @@ export default async function Home() {
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <div className="rounded-lg bg-white p-6 shadow dark:bg-gray-800">
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Acciones Rápidas</h3>
-          <div className="grid grid-cols-2 gap-4">
-            <Link href="/products" className="flex flex-col items-center justify-center rounded-lg border border-gray-200 p-4 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-700 transition-colors">
-              <span className="text-indigo-600 font-medium">Gestionar Productos</span>
-            </Link>
-            <Link href="/outputs" className="flex flex-col items-center justify-center rounded-lg border border-gray-200 p-4 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-700 transition-colors">
-              <span className="text-green-600 font-medium">Registrar Salida</span>
-            </Link>
-             <Link href="/agent" className="flex flex-col items-center justify-center rounded-lg border border-gray-200 p-4 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-700 transition-colors">
-              <span className="text-purple-600 font-medium">Consultar IA</span>
-            </Link>
+      <div className="grid gap-8 lg:grid-cols-2">
+        <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+          <div className="border-b border-gray-200 p-4 dark:border-gray-700">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Salidas Recientes</h3>
+          </div>
+          <div className="p-4">
+            {recentOutputs.length > 0 ? (
+              <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+                {recentOutputs.map((output) => (
+                  <li key={output.id} className="py-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium text-gray-900 dark:text-white">
+                          {output.items?.[0]?.nombreProducto || 'Salida'}
+                          {output.totalProductos > 1 && (
+                            <span className="ml-2 text-xs font-normal text-gray-500 dark:text-gray-400">
+                              (+{output.totalProductos - 1} más)
+                            </span>
+                          )}
+                        </p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Entregado a: {output.destinatarioNombre}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold text-gray-900 dark:text-white">x{output.totalCantidad}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{new Date(output.fecha).toLocaleDateString()}</p>
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-center text-gray-500 dark:text-gray-400 py-4">No hay salidas registradas.</p>
+            )}
+            <div className="mt-4 border-t border-gray-200 pt-4 dark:border-gray-700">
+              <Link href="/outputs" className="text-sm font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">
+                Ver todas las salidas &rarr;
+              </Link>
+            </div>
           </div>
         </div>
 
-        <div className="rounded-lg bg-white p-6 shadow dark:bg-gray-800">
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Salidas Recientes</h3>
-          <ul className="divide-y divide-gray-200 dark:divide-gray-700">
-            {recentOutputs.length > 0 ? recentOutputs.map((output) => (
-              <li key={output.id} className="py-3">
-                <div className="flex justify-between">
-                  <span className="text-sm font-medium text-gray-900 dark:text-white">{output.nombreProducto}</span>
-                  <span className="text-sm text-gray-500 dark:text-gray-400">{new Date(output.fecha).toLocaleDateString()}</span>
-                </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Destino: {output.destinatarioNombre} ({output.cantidad} un.)
-                </p>
-              </li>
-            )) : (
-                <li className="py-3 text-sm text-gray-500">No hay salidas recientes.</li>
-            )}
-          </ul>
+        <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+          <div className="border-b border-gray-200 p-4 dark:border-gray-700">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Acciones Rápidas</h3>
+          </div>
+          <div className="grid grid-cols-2 gap-4 p-4">
+            <Link href="/products" className="flex flex-col items-center justify-center rounded-lg border border-gray-200 p-4 transition-all hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-700">
+              <svg className="mb-2 h-8 w-8 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+              <span className="text-sm font-medium text-gray-900 dark:text-white">Nuevo Producto</span>
+            </Link>
+            <Link href="/outputs" className="flex flex-col items-center justify-center rounded-lg border border-gray-200 p-4 transition-all hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-700">
+              <svg className="mb-2 h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 11l3-3m0 0l3 3m-3-3v8m0-13a9 9 0 110 18 9 9 0 010-18z" />
+              </svg>
+              <span className="text-sm font-medium text-gray-900 dark:text-white">Registrar Salida</span>
+            </Link>
+          </div>
         </div>
       </div>
     </div>

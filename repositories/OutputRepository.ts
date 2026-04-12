@@ -1,10 +1,11 @@
 import { supabase } from '../lib/supabase';
+import { tableNames } from '../lib/app-config';
 import { Output } from '../models/Output';
 
 export class OutputRepository {
   async getAll(): Promise<Output[]> {
     const { data, error } = await supabase
-      .from('salidas')
+      .from(tableNames.salidas)
       .select('*');
     
     if (error) throw new Error(error.message);
@@ -13,7 +14,7 @@ export class OutputRepository {
 
   async getById(id: string): Promise<Output | null> {
     const { data, error } = await supabase
-      .from('salidas')
+      .from(tableNames.salidas)
       .select('*')
       .eq('id', id)
       .single();
@@ -24,7 +25,7 @@ export class OutputRepository {
 
   async create(output: Output): Promise<Output> {
     const { data, error } = await supabase
-      .from('salidas')
+      .from(tableNames.salidas)
       .insert([output])
       .select()
       .single();
@@ -35,7 +36,7 @@ export class OutputRepository {
 
   async delete(id: string): Promise<boolean> {
     const { error } = await supabase
-      .from('salidas')
+      .from(tableNames.salidas)
       .delete()
       .eq('id', id);
     

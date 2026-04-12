@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Product } from '@/models/Product';
+import { Product } from '@/modules/inventory/models/Product';
 import ProductForm from './ProductForm';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';

@@ -1,10 +1,11 @@
 import { supabase } from '../lib/supabase';
+import { tableNames } from '../lib/app-config';
 import { Product } from '../models/Product';
 
 export class ProductRepository {
   async getAll(): Promise<Product[]> {
     const { data, error } = await supabase
-      .from('productos')
+      .from(tableNames.productos)
       .select('*');
     
     if (error) throw new Error(error.message);
@@ -13,7 +14,7 @@ export class ProductRepository {
 
   async getById(id: string): Promise<Product | null> {
     const { data, error } = await supabase
-      .from('productos')
+      .from(tableNames.productos)
       .select('*')
       .eq('id', id)
       .single();
@@ -24,7 +25,7 @@ export class ProductRepository {
 
   async create(product: Product): Promise<Product> {
     const { data, error } = await supabase
-      .from('productos')
+      .from(tableNames.productos)
       .insert([product])
       .select()
       .single();
@@ -35,7 +36,7 @@ export class ProductRepository {
 
   async update(id: string, updates: Partial<Product>): Promise<Product | null> {
     const { data, error } = await supabase
-      .from('productos')
+      .from(tableNames.productos)
       .update(updates)
       .eq('id', id)
       .select()
@@ -47,7 +48,7 @@ export class ProductRepository {
 
   async delete(id: string): Promise<boolean> {
     const { error } = await supabase
-      .from('productos')
+      .from(tableNames.productos)
       .delete()
       .eq('id', id);
     
