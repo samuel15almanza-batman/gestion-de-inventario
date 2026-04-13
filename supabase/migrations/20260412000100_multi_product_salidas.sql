@@ -19,11 +19,22 @@ CREATE TABLE IF NOT EXISTS public.salida_items (
 
 ALTER TABLE public.salida_items ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS "Permitir acceso total a salida_items para anon" ON public.salida_items
-FOR ALL
-TO anon
-USING (true)
-WITH CHECK (true);
+-- Crear la política, usando un bloque DO para evitar error de sintaxis IF NOT EXISTS en policies (Supabase/PostgreSQL 15 no soporta IF NOT EXISTS en CREATE POLICY directamente en todas las versiones)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE tablename = 'salida_items' 
+    AND policyname = 'Permitir acceso total a salida_items para anon'
+  ) THEN
+    CREATE POLICY "Permitir acceso total a salida_items para anon" ON public.salida_items
+    FOR ALL
+    TO anon
+    USING (true)
+    WITH CHECK (true);
+  END IF;
+END
+$$;
 
 CREATE INDEX IF NOT EXISTS idx_salida_items_salida_id ON public.salida_items(salida_id);
 CREATE INDEX IF NOT EXISTS idx_salida_items_producto_id ON public.salida_items(producto_id);
