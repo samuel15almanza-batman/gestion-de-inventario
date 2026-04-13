@@ -5,18 +5,21 @@ import { Product } from '@/modules/inventory/models/Product';
 import axios from 'axios';
 
 interface ProductFormProps {
-  onSuccess: (product: Product) => void;
+  initialData?: Product;
+  onSuccess: (product: Product, isEdit: boolean) => void;
   onCancel: () => void;
 }
 
-export default function ProductForm({ onSuccess, onCancel }: ProductFormProps) {
+export default function ProductForm({ initialData, onSuccess, onCancel }: ProductFormProps) {
   const [formData, setFormData] = useState({
-    nombre: '',
-    descripcion: '',
-    cantidad: 0,
-    precio: 0,
-    categoria: '',
-    fecha_entrada: new Date().toISOString().split('T')[0]
+    nombre: initialData?.nombre || '',
+    descripcion: initialData?.descripcion || '',
+    cantidad: initialData?.cantidad || 0,
+    precio: initialData?.precio || 0,
+    categoria: initialData?.categoria || '',
+    fecha_entrada: initialData?.fecha_entrada 
+      ? new Date(initialData.fecha_entrada).toISOString().split('T')[0] 
+      : new Date().toISOString().split('T')[0]
   });
   const [loading, setLoading] = useState(false);
 
@@ -24,11 +27,18 @@ export default function ProductForm({ onSuccess, onCancel }: ProductFormProps) {
     e.preventDefault();
     setLoading(true);
     try {
-      const response = await axios.post('/api/products', formData);
-      onSuccess(response.data);
+      if (initialData?.id) {
+        // Edit existing product
+        const response = await axios.put(`/api/products/${initialData.id}`, formData);
+        onSuccess(response.data, true);
+      } else {
+        // Create new product
+        const response = await axios.post('/api/products', formData);
+        onSuccess(response.data, false);
+      }
     } catch (error) {
       console.error(error);
-      alert('Error al crear producto');
+      alert(`Error al ${initialData ? 'actualizar' : 'crear'} producto`);
     } finally {
       setLoading(false);
     }

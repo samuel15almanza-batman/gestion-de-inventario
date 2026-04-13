@@ -13,6 +13,7 @@ interface ProductListProps {
 export default function ProductList({ initialProducts }: ProductListProps) {
   const [products, setProducts] = useState(initialProducts);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | undefined>(undefined);
   const [categoryFilter, setCategoryFilter] = useState('');
   const [maxPriceFilter, setMaxPriceFilter] = useState('');
   const [minQuantityFilter, setMinQuantityFilter] = useState('');
@@ -39,10 +40,26 @@ export default function ProductList({ initialProducts }: ProductListProps) {
     }
   };
 
-  const handleProductAdded = (newProduct: Product) => {
-      setProducts([...products, newProduct]);
+  const handleProductAdded = (savedProduct: Product, isEdit: boolean) => {
+      if (isEdit) {
+        setProducts(products.map(p => p.id === savedProduct.id ? savedProduct : p));
+        alert('Producto actualizado con éxito');
+      } else {
+        setProducts([...products, savedProduct]);
+      }
       setIsModalOpen(false);
+      setEditingProduct(undefined);
       router.refresh();
+  };
+
+  const handleEdit = (product: Product) => {
+    setEditingProduct(product);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setEditingProduct(undefined);
   };
 
   return (
@@ -115,6 +132,9 @@ export default function ProductList({ initialProducts }: ProductListProps) {
                   {product.fecha_entrada ? new Date(product.fecha_entrada).toLocaleDateString() : '-'}
                 </td>
                 <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
+                  <button onClick={() => handleEdit(product)} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 mr-4">
+                    Editar
+                  </button>
                   <button onClick={() => handleDelete(product.id)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">
                     Eliminar
                   </button>
@@ -135,8 +155,14 @@ export default function ProductList({ initialProducts }: ProductListProps) {
       {isModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
               <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl dark:bg-gray-800 animate-in fade-in zoom-in duration-200">
-                  <h2 className="mb-4 text-lg font-bold text-gray-900 dark:text-white">Nuevo Producto</h2>
-                  <ProductForm onSuccess={handleProductAdded} onCancel={() => setIsModalOpen(false)} />
+                  <h2 className="mb-4 text-lg font-bold text-gray-900 dark:text-white">
+                    {editingProduct ? 'Editar Producto' : 'Nuevo Producto'}
+                  </h2>
+                  <ProductForm 
+                    initialData={editingProduct}
+                    onSuccess={handleProductAdded} 
+                    onCancel={handleCloseModal} 
+                  />
               </div>
           </div>
       )}
