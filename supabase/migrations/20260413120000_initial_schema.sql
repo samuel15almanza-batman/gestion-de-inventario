@@ -1,66 +1,63 @@
--- Este archivo reemplaza a la migración 20260412000100_multi_product_salidas.sql
--- para incluir todos los arreglos (aliases en req_producto_id y manejo de RLS en salida_items)
--- y ser ejecutado de nuevo vía Supabase CLI.
+-- Estructura base completa de la Base de Datos para Sistema de Gestión de Inventario
 
--- Soporte para registro de salidas multi-producto (cabecera + detalle) con transacción.
-
-ALTER TABLE public.salidas
-  ALTER COLUMN "nombreProducto" DROP NOT NULL,
-  ALTER COLUMN cantidad DROP NOT NULL;
-
-ALTER TABLE public.salidas
-  ADD COLUMN IF NOT EXISTS "totalProductos" INTEGER NOT NULL DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS "totalCantidad" INTEGER NOT NULL DEFAULT 0;
-
-CREATE TABLE IF NOT EXISTS public.salida_items (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  salida_id UUID NOT NULL REFERENCES public.salidas(id) ON DELETE CASCADE,
-  producto_id UUID NOT NULL REFERENCES public.productos(id) ON DELETE RESTRICT,
-  nombre_producto TEXT NOT NULL,
-  cantidad INTEGER NOT NULL CHECK (cantidad > 0),
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+-- 1. Tabla de Productos
+CREATE TABLE public.productos (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    nombre TEXT NOT NULL,
+    descripcion TEXT,
+    cantidad INTEGER NOT NULL DEFAULT 0,
+    precio NUMERIC NOT NULL DEFAULT 0,
+    categoria TEXT,
+    fecha_entrada TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
+-- 2. Tabla de Salidas (Cabecera)
+CREATE TABLE public.salidas (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    fecha TEXT NOT NULL, -- Se guarda como ISO String desde el cliente
+    "destinatarioNombre" TEXT NOT NULL,
+    "destinatarioFicha" TEXT NOT NULL,
+    "destinatarioArea" TEXT NOT NULL,
+    "firmaDigital" TEXT NOT NULL, -- Base64 de la firma
+    "totalProductos" INTEGER NOT NULL DEFAULT 0,
+    "totalCantidad" INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 3. Tabla de Detalle de Salidas (Items)
+CREATE TABLE public.salida_items (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    salida_id UUID NOT NULL REFERENCES public.salidas(id) ON DELETE CASCADE,
+    producto_id UUID NOT NULL REFERENCES public.productos(id) ON DELETE RESTRICT,
+    nombre_producto TEXT NOT NULL,
+    cantidad INTEGER NOT NULL CHECK (cantidad > 0),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 4. Habilitar Row Level Security (RLS)
+ALTER TABLE public.productos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.salidas ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.salida_items ENABLE ROW LEVEL SECURITY;
 
--- Crear la política, usando un bloque DO para evitar error de sintaxis IF NOT EXISTS en policies
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_policies 
-    WHERE tablename = 'salida_items' 
-    AND policyname = 'Permitir acceso total a salida_items para anon'
-  ) THEN
-    CREATE POLICY "Permitir acceso total a salida_items para anon" ON public.salida_items
-    FOR ALL
-    TO anon
-    USING (true)
-    WITH CHECK (true);
-  END IF;
-END
-$$;
+-- 5. Crear políticas de acceso público (Anónimo)
+-- Dado que el requerimiento especifica "sin registro de usuarios", se permite acceso anon
+CREATE POLICY "Permitir acceso total a productos para anon" ON public.productos
+FOR ALL TO anon USING (true) WITH CHECK (true);
 
-CREATE INDEX IF NOT EXISTS idx_salida_items_salida_id ON public.salida_items(salida_id);
-CREATE INDEX IF NOT EXISTS idx_salida_items_producto_id ON public.salida_items(producto_id);
+CREATE POLICY "Permitir acceso total a salidas para anon" ON public.salidas
+FOR ALL TO anon USING (true) WITH CHECK (true);
 
--- Migración de datos existentes (salidas de 1 producto) a la tabla detalle
-INSERT INTO public.salida_items (salida_id, producto_id, nombre_producto, cantidad)
-SELECT s.id, s."productoId", s."nombreProducto", s.cantidad
-FROM public.salidas s
-WHERE s."productoId" IS NOT NULL
-  AND s.cantidad IS NOT NULL
-  AND NOT EXISTS (
-    SELECT 1 FROM public.salida_items si WHERE si.salida_id = s.id
-  );
+CREATE POLICY "Permitir acceso total a salida_items para anon" ON public.salida_items
+FOR ALL TO anon USING (true) WITH CHECK (true);
 
-UPDATE public.salidas
-SET
-  "totalProductos" = COALESCE("totalProductos", 0) + 1,
-  "totalCantidad" = COALESCE("totalCantidad", 0) + COALESCE(cantidad, 0)
-WHERE "productoId" IS NOT NULL
-  AND cantidad IS NOT NULL
-  AND ("totalProductos" = 0 OR "totalCantidad" = 0);
+-- 6. Índices para mejorar el rendimiento
+CREATE INDEX idx_productos_categoria ON public.productos(categoria);
+CREATE INDEX idx_salidas_fecha ON public.salidas(fecha);
+CREATE INDEX idx_salida_items_salida_id ON public.salida_items(salida_id);
+CREATE INDEX idx_salida_items_producto_id ON public.salida_items(producto_id);
 
+-- 7. Función RPC para registrar una salida con múltiples productos (Transaccional)
 CREATE OR REPLACE FUNCTION public.register_salida_multi(
   items JSONB,
   "destinatarioNombre" TEXT,
