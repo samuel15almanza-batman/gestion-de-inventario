@@ -110,9 +110,9 @@ export default function ProductList({ initialProducts }: ProductListProps) {
         </button>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow dark:border-gray-700 dark:bg-gray-800">
+      <div className="overflow-x-auto overflow-y-auto max-h-[600px] rounded-lg border border-gray-200 bg-white shadow dark:border-gray-700 dark:bg-gray-800">
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead className="bg-gray-50 dark:bg-gray-900">
+          <thead className="bg-gray-50 dark:bg-gray-900 sticky top-0 z-10">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Nombre</th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Categoría</th>

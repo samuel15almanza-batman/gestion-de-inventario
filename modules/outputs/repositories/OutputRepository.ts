@@ -202,7 +202,7 @@ export class SupabaseOutputRepository implements IOutputRepository {
   }
 
   async delete(id: string): Promise<boolean> {
-    const { error } = await supabase.from('salidas').delete().eq('id', id);
+    const { error } = await supabase.rpc('delete_salida_restore_stock', { p_salida_id: id });
     return !error;
   }
 }
@@ -250,6 +250,16 @@ export class MockOutputRepository implements IOutputRepository {
   async delete(id: string): Promise<boolean> {
     const index = inMemoryStore.outputs.findIndex(o => o.id === id);
     if (index === -1) return false;
+    
+    // Restore stock for each item
+    const output = inMemoryStore.outputs[index];
+    output.items.forEach(item => {
+      const product = inMemoryStore.products.find(p => p.id === item.productoId);
+      if (product) {
+        product.cantidad += item.cantidad;
+      }
+    });
+
     inMemoryStore.outputs.splice(index, 1);
     return true;
   }

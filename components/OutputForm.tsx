@@ -143,7 +143,7 @@ export default function OutputForm({ products, onSuccess, onCancel }: OutputForm
             Agrega uno o más productos desde el selector.
           </div>
         ) : (
-          <div className="mt-3 space-y-2">
+          <div className="mt-3 space-y-2 max-h-[300px] overflow-y-auto pr-2">
             {items.map((it) => {
               const product = products.find(p => p.id === it.productoId);
               const max = product?.cantidad ?? 0;

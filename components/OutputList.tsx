@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Output } from '@/modules/outputs/models/Output';
 import { Product } from '@/modules/inventory/models/Product';
 import OutputForm from './OutputForm';
+import axios from 'axios';
 import { useRouter } from 'next/navigation';
 
 interface OutputListProps {
@@ -32,6 +33,18 @@ export default function OutputList({ initialOutputs, products }: OutputListProps
     setOutputs([newOutput, ...outputs]);
     setIsModalOpen(false);
     router.refresh();
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('¿Está seguro de eliminar esta salida? El stock será devuelto al inventario.')) return;
+    try {
+      await axios.delete(`/api/outputs/${id}`);
+      alert('Salida eliminada con éxito');
+      router.refresh();
+    } catch (error: any) {
+      console.error(error);
+      alert(error.response?.data?.error || 'Error al eliminar salida');
+    }
   };
 
   return (
@@ -76,9 +89,9 @@ export default function OutputList({ initialOutputs, products }: OutputListProps
         </button>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow dark:border-gray-700 dark:bg-gray-800">
+      <div className="overflow-x-auto overflow-y-auto max-h-[600px] rounded-lg border border-gray-200 bg-white shadow dark:border-gray-700 dark:bg-gray-800">
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead className="bg-gray-50 dark:bg-gray-900">
+          <thead className="bg-gray-50 dark:bg-gray-900 sticky top-0 z-10">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Fecha</th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Producto</th>
@@ -117,9 +130,15 @@ export default function OutputList({ initialOutputs, products }: OutputListProps
                   <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
                     <button
                       onClick={() => setSelectedOutput(output)}
-                      className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
+                      className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 mr-4"
                     >
                       Detalles
+                    </button>
+                    <button
+                      onClick={() => handleDelete(output.id)}
+                      className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                    >
+                      Eliminar
                     </button>
                   </td>
                 </tr>
@@ -172,9 +191,9 @@ export default function OutputList({ initialOutputs, products }: OutputListProps
                             </div>
                           </div>
 
-                          <div className="mt-4 overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+                          <div className="mt-4 overflow-x-auto overflow-y-auto max-h-[300px] rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
                             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                              <thead className="bg-gray-50 dark:bg-gray-900">
+                              <thead className="bg-gray-50 dark:bg-gray-900 sticky top-0 z-10">
                                 <tr>
                                   <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Producto</th>
                                   <th className="px-4 py-2 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Cantidad</th>
