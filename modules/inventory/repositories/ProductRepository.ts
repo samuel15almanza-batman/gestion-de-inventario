@@ -38,7 +38,13 @@ export class SupabaseProductRepository implements IProductRepository {
 
   async delete(id: string): Promise<boolean> {
     const { error } = await supabase.from('productos').delete().eq('id', id);
-    return !error;
+    if (error) {
+      if (error.code === '23503') { // Foreign key violation code in Postgres
+        throw new Error('No se puede eliminar el producto porque ya tiene salidas registradas. Elimine las salidas primero.');
+      }
+      throw new Error(error.message);
+    }
+    return true;
   }
 }
 

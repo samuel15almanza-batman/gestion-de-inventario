@@ -34,9 +34,13 @@ export default function ProductList({ initialProducts }: ProductListProps) {
         await axios.delete(`/api/products/${id}`);
         setProducts(products.filter(p => p.id !== id));
         router.refresh();
-    } catch (error) {
+    } catch (error: any) {
         console.error(error);
-        alert('Error al eliminar');
+        if (error.response?.data?.error) {
+          alert(error.response.data.error);
+        } else {
+          alert('Error al eliminar');
+        }
     }
   };
 

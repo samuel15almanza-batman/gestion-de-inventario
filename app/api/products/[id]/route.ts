@@ -49,13 +49,14 @@ export async function DELETE(
   const mode = getAppMode();
   const productService = new ProductService(mode);
   try {
-    const success = await productService.delete(id);
-    if (!success) {
-      return NextResponse.json({ error: 'Product not found' }, { status: 404 });
-    }
+    await productService.delete(id);
     return NextResponse.json({ message: 'Product deleted successfully' });
-  } catch (error) {
+  } catch (error: any) {
     console.error(error);
+    // Si el error es por salidas registradas, devolvemos un 400 Bad Request con el mensaje
+    if (error.message && error.message.includes('salidas registradas')) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     return NextResponse.json({ error: 'Failed to delete product' }, { status: 500 });
   }
 }
