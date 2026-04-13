@@ -59,23 +59,24 @@ CREATE INDEX idx_salida_items_producto_id ON public.salida_items(producto_id);
 
 -- 7. Función RPC para registrar una salida con múltiples productos (Transaccional)
 CREATE OR REPLACE FUNCTION public.register_salida_multi(
-  items JSONB,
-  "destinatarioNombre" TEXT,
-  "destinatarioFicha" TEXT,
-  "destinatarioArea" TEXT,
-  "firmaDigital" TEXT,
-  fecha TEXT
+  p_items JSONB,
+  p_destinatario_nombre TEXT,
+  p_destinatario_ficha TEXT,
+  p_destinatario_area TEXT,
+  p_firma_digital TEXT,
+  p_fecha TEXT
 ) RETURNS UUID
 LANGUAGE plpgsql
 AS $$
+#variable_conflict use_column
 DECLARE
-  salida_id UUID;
-  total_productos INTEGER;
-  total_cantidad INTEGER;
-  r RECORD;
-  p RECORD;
+  v_salida_id UUID;
+  v_total_productos INTEGER;
+  v_total_cantidad INTEGER;
+  v_req RECORD;
+  v_prod RECORD;
 BEGIN
-  IF items IS NULL OR jsonb_typeof(items) <> 'array' OR jsonb_array_length(items) = 0 THEN
+  IF p_items IS NULL OR jsonb_typeof(p_items) <> 'array' OR jsonb_array_length(p_items) = 0 THEN
     RAISE EXCEPTION 'Debe seleccionar al menos un producto';
   END IF;
 
@@ -83,7 +84,7 @@ BEGIN
     SELECT
       (elem->>'productoId')::uuid AS param_producto_id,
       (elem->>'cantidad')::int AS param_cantidad
-    FROM jsonb_array_elements(items) elem
+    FROM jsonb_array_elements(p_items) elem
   ),
   req_agg AS (
     SELECT param_producto_id, SUM(param_cantidad) AS param_cantidad
@@ -91,15 +92,15 @@ BEGIN
     GROUP BY param_producto_id
   )
   SELECT COUNT(*)::int, COALESCE(SUM(param_cantidad), 0)::int
-  INTO total_productos, total_cantidad
+  INTO v_total_productos, v_total_cantidad
   FROM req_agg;
 
-  FOR r IN
+  FOR v_req IN
     WITH req AS (
       SELECT
         (elem->>'productoId')::uuid AS param_producto_id,
         (elem->>'cantidad')::int AS param_cantidad
-      FROM jsonb_array_elements(items) elem
+      FROM jsonb_array_elements(p_items) elem
     ),
     req_agg AS (
       SELECT param_producto_id, SUM(param_cantidad) AS param_cantidad
@@ -109,22 +110,22 @@ BEGIN
     SELECT * FROM req_agg
   LOOP
     SELECT id, nombre, cantidad
-    INTO p
+    INTO v_prod
     FROM public.productos
-    WHERE id = r.param_producto_id
+    WHERE id = v_req.param_producto_id
     FOR UPDATE;
 
     IF NOT FOUND THEN
-      RAISE EXCEPTION 'Producto no encontrado (%).', r.param_producto_id;
+      RAISE EXCEPTION 'Producto no encontrado (%).', v_req.param_producto_id;
     END IF;
 
-    IF p.cantidad < r.param_cantidad THEN
-      RAISE EXCEPTION 'Stock insuficiente para "%". Disponible: %, solicitado: %', p.nombre, p.cantidad, r.param_cantidad;
+    IF v_prod.cantidad < v_req.param_cantidad THEN
+      RAISE EXCEPTION 'Stock insuficiente para "%". Disponible: %, solicitado: %', v_prod.nombre, v_prod.cantidad, v_req.param_cantidad;
     END IF;
 
     UPDATE public.productos
-    SET cantidad = cantidad - r.param_cantidad
-    WHERE id = r.param_producto_id;
+    SET cantidad = cantidad - v_req.param_cantidad
+    WHERE id = v_req.param_producto_id;
   END LOOP;
 
   INSERT INTO public.salidas (
@@ -136,32 +137,32 @@ BEGIN
     "totalProductos",
     "totalCantidad"
   ) VALUES (
-    fecha,
-    "destinatarioNombre",
-    "destinatarioFicha",
-    "destinatarioArea",
-    "firmaDigital",
-    total_productos,
-    total_cantidad
-  ) RETURNING id INTO salida_id;
+    p_fecha,
+    p_destinatario_nombre,
+    p_destinatario_ficha,
+    p_destinatario_area,
+    p_firma_digital,
+    v_total_productos,
+    v_total_cantidad
+  ) RETURNING id INTO v_salida_id;
 
   INSERT INTO public.salida_items (salida_id, producto_id, nombre_producto, cantidad)
   WITH req AS (
     SELECT
       (elem->>'productoId')::uuid AS param_producto_id,
       (elem->>'cantidad')::int AS param_cantidad
-    FROM jsonb_array_elements(items) elem
+    FROM jsonb_array_elements(p_items) elem
   ),
   req_agg AS (
     SELECT param_producto_id, SUM(param_cantidad) AS param_cantidad
     FROM req
     GROUP BY param_producto_id
   )
-  SELECT salida_id, p.id, p.nombre, r.param_cantidad
+  SELECT v_salida_id, prod.id, prod.nombre, r.param_cantidad
   FROM req_agg r
-  JOIN public.productos p ON p.id = r.param_producto_id;
+  JOIN public.productos prod ON prod.id = r.param_producto_id;
 
-  RETURN salida_id;
+  RETURN v_salida_id;
 END;
 $$;
 
