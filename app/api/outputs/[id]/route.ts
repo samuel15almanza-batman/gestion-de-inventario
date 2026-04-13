@@ -2,7 +2,11 @@ import { NextResponse } from 'next/server';
 import { OutputService } from '@/modules/outputs/services/OutputService';
 import { getAppMode } from '@/lib/app-config';
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(
+  request: Request,
+  context: { params: Promise<{ id: string }> }
+) {
+  const params = await context.params;
   const mode = getAppMode();
   const outputService = new OutputService(mode);
   
