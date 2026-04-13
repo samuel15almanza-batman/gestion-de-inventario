@@ -181,14 +181,18 @@ export class SupabaseOutputRepository implements IOutputRepository {
   }
 
   async registerMulti(input: OutputCreateInput & { fecha: string }): Promise<Output> {
-    const { data, error } = await supabase.rpc('register_salida_multi', {
-      items: input.items,
+    const rpcPayload = {
+      items: input.items.map(item => ({
+        productoId: item.productoId,
+        cantidad: item.cantidad
+      })),
       destinatarioNombre: input.destinatarioNombre,
       destinatarioFicha: input.destinatarioFicha,
       destinatarioArea: input.destinatarioArea,
       firmaDigital: input.firmaDigital,
       fecha: input.fecha,
-    });
+    };
+    const { data, error } = await supabase.rpc('register_salida_multi', rpcPayload);
 
     if (error) throw new Error(error.message);
 

@@ -1,3 +1,7 @@
+-- Este archivo reemplaza a la migración 20260412000100_multi_product_salidas.sql
+-- para incluir todos los arreglos (aliases en req_producto_id y manejo de RLS en salida_items)
+-- y ser ejecutado de nuevo vía Supabase CLI.
+
 -- Soporte para registro de salidas multi-producto (cabecera + detalle) con transacción.
 
 ALTER TABLE public.salidas
@@ -19,7 +23,7 @@ CREATE TABLE IF NOT EXISTS public.salida_items (
 
 ALTER TABLE public.salida_items ENABLE ROW LEVEL SECURITY;
 
--- Crear la política, usando un bloque DO para evitar error de sintaxis IF NOT EXISTS en policies (Supabase/PostgreSQL 15 no soporta IF NOT EXISTS en CREATE POLICY directamente en todas las versiones)
+-- Crear la política, usando un bloque DO para evitar error de sintaxis IF NOT EXISTS en policies
 DO $$
 BEGIN
   IF NOT EXISTS (
@@ -80,50 +84,50 @@ BEGIN
 
   WITH req AS (
     SELECT
-      (elem->>'productoId')::uuid AS producto_id,
-      (elem->>'cantidad')::int AS cantidad
+      (elem->>'productoId')::uuid AS req_producto_id,
+      (elem->>'cantidad')::int AS req_cantidad
     FROM jsonb_array_elements(items) elem
   ),
   req_agg AS (
-    SELECT producto_id, SUM(cantidad) AS cantidad
+    SELECT req_producto_id, SUM(req_cantidad) AS req_cantidad
     FROM req
-    GROUP BY producto_id
+    GROUP BY req_producto_id
   )
-  SELECT COUNT(*)::int, COALESCE(SUM(cantidad), 0)::int
+  SELECT COUNT(*)::int, COALESCE(SUM(req_cantidad), 0)::int
   INTO total_productos, total_cantidad
   FROM req_agg;
 
   FOR r IN
     WITH req AS (
       SELECT
-        (elem->>'productoId')::uuid AS producto_id,
-        (elem->>'cantidad')::int AS cantidad
+        (elem->>'productoId')::uuid AS req_producto_id,
+        (elem->>'cantidad')::int AS req_cantidad
       FROM jsonb_array_elements(items) elem
     ),
     req_agg AS (
-      SELECT producto_id, SUM(cantidad) AS cantidad
+      SELECT req_producto_id, SUM(req_cantidad) AS req_cantidad
       FROM req
-      GROUP BY producto_id
+      GROUP BY req_producto_id
     )
     SELECT * FROM req_agg
   LOOP
     SELECT id, nombre, cantidad
     INTO p
     FROM public.productos
-    WHERE id = r.producto_id
+    WHERE id = r.req_producto_id
     FOR UPDATE;
 
     IF NOT FOUND THEN
-      RAISE EXCEPTION 'Producto no encontrado (%).', r.producto_id;
+      RAISE EXCEPTION 'Producto no encontrado (%).', r.req_producto_id;
     END IF;
 
-    IF p.cantidad < r.cantidad THEN
-      RAISE EXCEPTION 'Stock insuficiente para "%". Disponible: %, solicitado: %', p.nombre, p.cantidad, r.cantidad;
+    IF p.cantidad < r.req_cantidad THEN
+      RAISE EXCEPTION 'Stock insuficiente para "%". Disponible: %, solicitado: %', p.nombre, p.cantidad, r.req_cantidad;
     END IF;
 
     UPDATE public.productos
-    SET cantidad = cantidad - r.cantidad
-    WHERE id = r.producto_id;
+    SET cantidad = cantidad - r.req_cantidad
+    WHERE id = r.req_producto_id;
   END LOOP;
 
   INSERT INTO public.salidas (
@@ -147,22 +151,21 @@ BEGIN
   INSERT INTO public.salida_items (salida_id, producto_id, nombre_producto, cantidad)
   WITH req AS (
     SELECT
-      (elem->>'productoId')::uuid AS producto_id,
-      (elem->>'cantidad')::int AS cantidad
+      (elem->>'productoId')::uuid AS req_producto_id,
+      (elem->>'cantidad')::int AS req_cantidad
     FROM jsonb_array_elements(items) elem
   ),
   req_agg AS (
-    SELECT producto_id, SUM(cantidad) AS cantidad
+    SELECT req_producto_id, SUM(req_cantidad) AS req_cantidad
     FROM req
-    GROUP BY producto_id
+    GROUP BY req_producto_id
   )
-  SELECT salida_id, p.id, p.nombre, r.cantidad
+  SELECT salida_id, p.id, p.nombre, r.req_cantidad
   FROM req_agg r
-  JOIN public.productos p ON p.id = r.producto_id;
+  JOIN public.productos p ON p.id = r.req_producto_id;
 
   RETURN salida_id;
 END;
 $$;
 
 GRANT EXECUTE ON FUNCTION public.register_salida_multi(JSONB, TEXT, TEXT, TEXT, TEXT, TEXT) TO anon;
-
