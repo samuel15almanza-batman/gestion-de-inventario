@@ -81,50 +81,50 @@ BEGIN
 
   WITH req AS (
     SELECT
-      (elem->>'productoId')::uuid AS req_producto_id,
-      (elem->>'cantidad')::int AS req_cantidad
+      (elem->>'productoId')::uuid AS param_producto_id,
+      (elem->>'cantidad')::int AS param_cantidad
     FROM jsonb_array_elements(items) elem
   ),
   req_agg AS (
-    SELECT req_producto_id, SUM(req_cantidad) AS req_cantidad
+    SELECT param_producto_id, SUM(param_cantidad) AS param_cantidad
     FROM req
-    GROUP BY req_producto_id
+    GROUP BY param_producto_id
   )
-  SELECT COUNT(*)::int, COALESCE(SUM(req_cantidad), 0)::int
+  SELECT COUNT(*)::int, COALESCE(SUM(param_cantidad), 0)::int
   INTO total_productos, total_cantidad
   FROM req_agg;
 
   FOR r IN
     WITH req AS (
       SELECT
-        (elem->>'productoId')::uuid AS req_producto_id,
-        (elem->>'cantidad')::int AS req_cantidad
+        (elem->>'productoId')::uuid AS param_producto_id,
+        (elem->>'cantidad')::int AS param_cantidad
       FROM jsonb_array_elements(items) elem
     ),
     req_agg AS (
-      SELECT req_producto_id, SUM(req_cantidad) AS req_cantidad
+      SELECT param_producto_id, SUM(param_cantidad) AS param_cantidad
       FROM req
-      GROUP BY req_producto_id
+      GROUP BY param_producto_id
     )
     SELECT * FROM req_agg
   LOOP
     SELECT id, nombre, cantidad
     INTO p
     FROM public.productos
-    WHERE id = r.req_producto_id
+    WHERE id = r.param_producto_id
     FOR UPDATE;
 
     IF NOT FOUND THEN
-      RAISE EXCEPTION 'Producto no encontrado (%).', r.req_producto_id;
+      RAISE EXCEPTION 'Producto no encontrado (%).', r.param_producto_id;
     END IF;
 
-    IF p.cantidad < r.req_cantidad THEN
-      RAISE EXCEPTION 'Stock insuficiente para "%". Disponible: %, solicitado: %', p.nombre, p.cantidad, r.req_cantidad;
+    IF p.cantidad < r.param_cantidad THEN
+      RAISE EXCEPTION 'Stock insuficiente para "%". Disponible: %, solicitado: %', p.nombre, p.cantidad, r.param_cantidad;
     END IF;
 
     UPDATE public.productos
-    SET cantidad = cantidad - r.req_cantidad
-    WHERE id = r.req_producto_id;
+    SET cantidad = cantidad - r.param_cantidad
+    WHERE id = r.param_producto_id;
   END LOOP;
 
   INSERT INTO public.salidas (
@@ -148,18 +148,18 @@ BEGIN
   INSERT INTO public.salida_items (salida_id, producto_id, nombre_producto, cantidad)
   WITH req AS (
     SELECT
-      (elem->>'productoId')::uuid AS req_producto_id,
-      (elem->>'cantidad')::int AS req_cantidad
+      (elem->>'productoId')::uuid AS param_producto_id,
+      (elem->>'cantidad')::int AS param_cantidad
     FROM jsonb_array_elements(items) elem
   ),
   req_agg AS (
-    SELECT req_producto_id, SUM(req_cantidad) AS req_cantidad
+    SELECT param_producto_id, SUM(param_cantidad) AS param_cantidad
     FROM req
-    GROUP BY req_producto_id
+    GROUP BY param_producto_id
   )
-  SELECT salida_id, p.id, p.nombre, r.req_cantidad
+  SELECT salida_id, p.id, p.nombre, r.param_cantidad
   FROM req_agg r
-  JOIN public.productos p ON p.id = r.req_producto_id;
+  JOIN public.productos p ON p.id = r.param_producto_id;
 
   RETURN salida_id;
 END;
